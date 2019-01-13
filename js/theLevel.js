@@ -1,6 +1,6 @@
 // dependencies
 
-import "./theLevel.css"
+import "../css/theLevel.css"
 /*----------------------------------------Basic Level Design--------------------------------- */
 let simpleLevelPlan = `
 ......................
@@ -223,4 +223,113 @@ DOMDisplay.prototype.scrollPlayerIntoView = function(state) {
     } else if (center.y > bottom - margin) {
         this.dom.scrollTop = center.y + margin - height;
     }
+};
+
+/*--------------Tells whether a rectangle touches a grid element of a given type for collisions---------------*/
+Level.prototype.touches = function(pos, size, type) {
+    var xStart = Math.floor(pos.x);
+    var xEnd = Math.ceil(pos.x + size.x);
+    var yStart = Math.floor(pos.y);
+    var yEnd = Math.ceil(pos.y + syze.y);
+
+    for (var y = yStart; y < yEnd; y++) {
+        for (var x = xStart; x < xEnd; x++) {
+            let isOutside = x < 0 || x >= this.width ||
+                            y < 0 || y >= this.height;
+            let here = isOutside ? "wall" : this.rows[y][x];
+            if (here == type) return true;
+        }
+    }
+    return false;
+}
+
+/*------------------------Use touches to figure out whether player is touching lava------------------*/
+State.prototype.update = function(time, keys) {
+    let actors = this.actors
+        .map(actor => actor.update(time, this, keys));
+    let newState = new State(this.level, actors, this.status);
+
+    if (newState.status != "playing") return newState;
+
+    let player = newState.player;
+    if (this.level.touches(player.pos, player.siz, "lava")) {
+        return new State(this.level, actors, "lost");
+    }
+
+    for (let actor of actors) {
+        if (actor != player && overlap(actor, player)) {
+            newState = actor.collide(newState);
+        }
+    }
+    return newState;
+};
+
+/*----------------------Function to detech overlap between actors-------------------------------*/
+function overlap(actor1, actor2) {
+    return actor1.pos.x + actor1.size.x > actor2.pos.x &&
+           actor1.pos.x < actor2.pos.x + actor2.size.x &&
+           actor1.pos.y + actor1.size.y > actor2.pos.y &&
+           actor1.pos.y < actor2.pos.y + actor2.size.y;
+}
+
+/*-----Collid will update state if overlap exists, if lava game is set to "lost", if coins collected, game is set to "won"----------*/
+Lava.prototype.collid = function(state) {
+    return new State(state.level, state.actors, "lost");
+};
+
+Coin.prototype.collide = function(state) {
+    let filtered = state.actors.filter(a => a != this);
+    let status = state.status;
+    if (!filtered.some(a => a.type == "coin")) status = "won";
+    return new State(state.level, filtered, status);
+};
+
+/*-------------------Method to update actor objects----------------*/
+Lava.prototype.update = function(time, state) {
+    let newPos = this.pos.plus(this.speed.times(time));
+    if (!state.level.touches(newPos, this.size, "wall")) {
+        return new Lava(newPos, this.speed, this.reset);
+    } else if (this.reset) {
+        return new Lava(this.reset, this.speed, this.reset);
+    } else {
+        return new Lava(this.pos, this.speed.times(-1));
+    }
+};
+
+/*----------------------------Coin update uses wobble, ignores collisions since they wobble inside their own square--------------------------------*/
+const wobbleSpeed = 8, wobbleDist = 0.07;
+
+Coin.prototype.update = function(time) {
+    let wobble = this.wobble + time * wobbleSpeed;
+    let wobblePos = Math.sin(wobble) * wobbleDist;
+    return new Coin(this.basePos.plus(new Vec(0, wobblePos)),
+                    this.basePos, wobble);
+};
+// Wobble prop is incremented to track time, then used w/Math.sin to find a new pos in the wave
+
+/*-----------------------Player Movement----------------------*/
+const playerXSpeed = 7;
+const gravity = 30;
+const jumpSpeed = 17;
+
+Player.prototype.update = function(time, state, keys) {
+    let xSpeed = 0;
+    if (keys.ArrowLeft) xSpeed -= playerXSpeed;
+    if (keys.ArrowRight) xSpeed += playerXSpeed;
+    let pos = this.pos;
+    let movedX = pos.plus(new Vec(xSpeed * time, 0));
+    if (!state.level.touches(movedX, this.size, "wall")) {
+        pos = movedX;
+    }
+
+    let ySpeed = this.speed.y + time * gravity;
+    let movedY = pos.plus(new Vec(0, ySpeed * time));
+    if (!state.level.touches(movedY, this.size, "wall")) {
+        pos = movedY;
+    } else if (keys.ArrowUp && ySpeed > 0) {
+        ySpeed = -jumpSpeed;
+    } else {
+        ySpeed = 0;
+    }
+    return new Player(pos, new Vec(xSpeed, ySpeed));
 };
