@@ -1,6 +1,3 @@
-// dependencies
-
-import "../css/theLevel.css"
 /*----------------------------------------Basic Level Design--------------------------------- */
 let simpleLevelPlan = `
 ......................
@@ -13,7 +10,7 @@ let simpleLevelPlan = `
 ......##############..
 ......................`;
 /*----------------------------------------The Level Itself--------------------------------- */
-class Level {
+var Level = class Level {
     constructor(plan) {
         // Use trim to remove white space at start and end of plan, allowing all lines to start directly below each other
         // The rest is split on newline characters, with each line being spread into an array
@@ -37,7 +34,7 @@ class Level {
     }
 }
 /*----------------------------------------State Manager--------------------------------- */
-class State {
+var State = class State {
     constructor(level, actors, status) {
         this.level = level;
         this.actors = actors;
@@ -57,7 +54,7 @@ class State {
 
 
 /*----------------------------------------Vec Class For Location and Size--------------------------------- */
-class Vec {
+var Vec = class Vec {
     constructor(x, y) {
         this.x = x; this.y = y;
     }
@@ -70,7 +67,7 @@ class Vec {
 }
 
 /*----------------------------------------Player Class--------------------------------- */
-class Player {
+var Player = class Player {
     constructor(pos, speed) {
         this.pos = pos;
         this.speed = speed;
@@ -87,7 +84,7 @@ class Player {
 Player.prototype.size = new Vec(0.8, 1.5);
 
 /*----------------------------------------Lava Class--------------------------------- */
-class Lava {
+var Lava = class Lava {
     constructor(pos, speed, reset) {
         this.pos = pos;
         this.speed = speed;
@@ -110,7 +107,7 @@ class Lava {
 Lava.prototype.size = new Vec(1, 1);
 
 /*----------------------------------------Coin Class--------------------------------- */
-class Coin {
+var Coin = class Coin {
     constructor(pos, basePos, wobble) {
         this.pos = pos;
         this.basePos = basePos;
@@ -129,14 +126,14 @@ class Coin {
 Coin.prototype.size = new Vec(0.6, 0.6);
 
 /*----------------------------------------Level Character Mapping--------------------------------- */
-const levelChars = {
+var levelChars = {
     ".": "empty", "#": "wall", "+": "lava",
     "@": Player, "o": Coin,
     "=": Lava, "|": Lava, "v": Lava
 };
 
 /*----------------------------------------Create The Level--------------------------------- */
-let simpleLevel = new Level(simpleLevelPlan);
+var simpleLevel = new Level(simpleLevelPlan);
 // console.log(`${simpleLevel.width} by ${simpleLevel.height}`);
 
 /*-----------------------------------------Function For Elements w/Attributes + Child Nodes--------------------------------------------------------*/
@@ -153,7 +150,7 @@ function elt(name, attrs, ...children) {
 }
 
 /*----------------------------------------Creates A Display------------------------------------*/
-class DOMDisplay {
+var DOMDisplay = class DOMDisplay {
     constructor(parent, level) {
         this.dom = elt("div", {class: "game"}, drawGrid(level));
         this.actorLayer = null;
@@ -164,6 +161,7 @@ class DOMDisplay {
 }
 
 // BG Grid is drawn once, as it never changes. Actors are redrawn every time the display is updated with a given state.
+var scale = 20;
 
 function drawGrid(level) {
     return elt("table", {
@@ -333,3 +331,66 @@ Player.prototype.update = function(time, state, keys) {
     }
     return new Player(pos, new Vec(xSpeed, ySpeed));
 };
+
+/*------------------------------------------Key Handler-------------------------*/
+function trackKayers(keys) {
+    let down = Object.create(null);
+    function track(event) {
+        if (keys.includes(event.key)) {
+            down[event.key] = event.type == "keydown";
+            event.preventDefault();
+        }
+    }
+    window.addEventListener("keydown", track);
+    window.addEventListener("keyup", track);
+    return down;
+}
+
+var arrowKeys = 
+    trackKeys(["ArrowLeft", "ArrowRight", "ArrowUp"]);
+
+/*--------------------------Run Animations---------------------------------*/
+function runAnimation(frameFunc) {
+    let lastTime = null;
+    function frame(time) {
+        if (lastTime != null) {
+            let timeStep = Math.min(time - lastTime, 100) / 1000;
+            if (frameFunc(timeStep) === false) return;
+        }
+        lastTime = time;
+        requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+}
+
+/*--------------------------------Runs Level in document.body-------------------------------*/
+function runLevel(level, Display) {
+    let display = new Display(document.body, level);
+    let state = State.start(level);
+    let ending = 1;
+    return new Promise(resole => {
+        runAnimation(time => {
+            state = state.update(time, arrowKeys);
+            display.syncState(state);
+            if (state.status == "playing") {
+                return true;
+            } else if (ending > 0) {
+                ending -= time;
+                return true;
+            } else {
+                display.clear();
+                resolve(state.status);
+                return false;
+            }
+        });
+    });
+}
+
+/*---------------------------Move to Next Level or Restart Level----------------------------*/
+async function runGame(plans, Display) {
+    for (let level = 0; level < plans.length;) {
+        let status = await runLevel(new Level(plans[level]), Display);
+        if (status == "won") level++;
+    }
+    console.log("You've won!");
+}
