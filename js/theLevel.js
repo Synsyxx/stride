@@ -130,7 +130,7 @@ var levelChars = {
     ".": "empty", "#": "wall", "+": "lava",
     "@": Player, "o": Coin,
     "=": Lava, "|": Lava, "v": Lava
-};
+  };
 
 /*----------------------------------------Create The Level--------------------------------- */
 var simpleLevel = new Level(simpleLevelPlan);
@@ -178,20 +178,20 @@ function drawGrid(level) {
 /*-----------------------------------Draw each actor--------------------------*/
 
 function drawActors(actors) {
-    return elt("div", {}, ...actors.map(actor=> {
-        let rect = elt("div", {class: `actor ${actor.type}`});
-        rect.style.width = `${actor.size.x * scale}px`;
-        rect.style.height = `${actor.size.y * scale}px`;
-        rect.style.left = `${actor.pos.x * scale}px`;
-        rect.style.top = `${actor.pos.y * scale}px`;
-        return rect;
+    return elt("div", {}, ...actors.map(actor => {
+      let rect = elt("div", {class: `actor ${actor.type}`});
+      rect.style.width = `${actor.size.x * scale}px`;
+      rect.style.height = `${actor.size.y * scale}px`;
+      rect.style.left = `${actor.pos.x * scale}px`;
+      rect.style.top = `${actor.pos.y * scale}px`;
+      return rect;
     }));
-}
+  }
 
 /*-----------------------------------syncState is used to make the display show a given state.it Removes old actor graphics and redraws new positions-------*/
 DOMDisplay.prototype.syncState = function(state) {
     if (this.actorLayer) this.actorLayer.remove();
-    this.actor = drawActors(state.actors);
+    this.actorLayer = drawActors(state.actors);
     this.dom.appendChild(this.actorLayer);
     this.dom.className = `game ${state.status}`;
     this.scrollPlayerIntoView(state);
@@ -206,40 +206,40 @@ DOMDisplay.prototype.scrollPlayerIntoView = function(state) {
     // The Viewport
     let left = this.dom.scrollLeft, right = left + width;
     let top = this.dom.scrollTop, bottom = top + height;
-
+  
     let player = state.player;
     let center = player.pos.plus(player.size.times(0.5))
-                            .times(scale);
-    
+                           .times(scale);
+  
     if (center.x < left + margin) {
-        this.dom.scrollLeft = center.x - margin;
+      this.dom.scrollLeft = center.x - margin;
     } else if (center.x > right - margin) {
-        this.dom.scrollLeft = center.x + margin - width;
+      this.dom.scrollLeft = center.x + margin - width;
     }
     if (center.y < top + margin) {
-        this.dom.scrollTop = center.y - margin;
+      this.dom.scrollTop = center.y - margin;
     } else if (center.y > bottom - margin) {
-        this.dom.scrollTop = center.y + margin - height;
+      this.dom.scrollTop = center.y + margin - height;
     }
-};
+  };
 
 /*--------------Tells whether a rectangle touches a grid element of a given type for collisions---------------*/
 Level.prototype.touches = function(pos, size, type) {
     var xStart = Math.floor(pos.x);
     var xEnd = Math.ceil(pos.x + size.x);
     var yStart = Math.floor(pos.y);
-    var yEnd = Math.ceil(pos.y + syze.y);
-
+    var yEnd = Math.ceil(pos.y + size.y);
+  
     for (var y = yStart; y < yEnd; y++) {
-        for (var x = xStart; x < xEnd; x++) {
-            let isOutside = x < 0 || x >= this.width ||
-                            y < 0 || y >= this.height;
-            let here = isOutside ? "wall" : this.rows[y][x];
-            if (here == type) return true;
-        }
+      for (var x = xStart; x < xEnd; x++) {
+        let isOutside = x < 0 || x >= this.width ||
+                        y < 0 || y >= this.height;
+        let here = isOutside ? "wall" : this.rows[y][x];
+        if (here == type) return true;
+      }
     }
     return false;
-}
+  };
 
 /*------------------------Use touches to figure out whether player is touching lava------------------*/
 State.prototype.update = function(time, keys) {
@@ -250,7 +250,7 @@ State.prototype.update = function(time, keys) {
     if (newState.status != "playing") return newState;
 
     let player = newState.player;
-    if (this.level.touches(player.pos, player.siz, "lava")) {
+    if (this.level.touches(player.pos, player.size, "lava")) {
         return new State(this.level, actors, "lost");
     }
 
@@ -268,10 +268,10 @@ function overlap(actor1, actor2) {
            actor1.pos.x < actor2.pos.x + actor2.size.x &&
            actor1.pos.y + actor1.size.y > actor2.pos.y &&
            actor1.pos.y < actor2.pos.y + actor2.size.y;
-}
+  }
 
 /*-----Collid will update state if overlap exists, if lava game is set to "lost", if coins collected, game is set to "won"----------*/
-Lava.prototype.collid = function(state) {
+Lava.prototype.collide = function(state) {
     return new State(state.level, state.actors, "lost");
 };
 
@@ -333,7 +333,7 @@ Player.prototype.update = function(time, state, keys) {
 };
 
 /*------------------------------------------Key Handler-------------------------*/
-function trackKayers(keys) {
+function trackKeys(keys) {
     let down = Object.create(null);
     function track(event) {
         if (keys.includes(event.key)) {
@@ -368,7 +368,7 @@ function runLevel(level, Display) {
     let display = new Display(document.body, level);
     let state = State.start(level);
     let ending = 1;
-    return new Promise(resole => {
+    return new Promise(resolve => {
         runAnimation(time => {
             state = state.update(time, arrowKeys);
             display.syncState(state);
@@ -389,8 +389,9 @@ function runLevel(level, Display) {
 /*---------------------------Move to Next Level or Restart Level----------------------------*/
 async function runGame(plans, Display) {
     for (let level = 0; level < plans.length;) {
-        let status = await runLevel(new Level(plans[level]), Display);
-        if (status == "won") level++;
+      let status = await runLevel(new Level(plans[level]),
+                                  Display);
+      if (status == "won") level++;
     }
-    console.log("You've won!");
-}
+    console.log("You won!");
+  }
