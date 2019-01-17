@@ -1,7 +1,7 @@
 .background { 
     background: rgb(52, 166, 251);
     table-layout: fixed;
-    border-spacing: 0;        
+    border-spacing: 0;
 }
 
 .background td {
@@ -41,4 +41,8 @@
     max-width: 600px;
     max-height: 450px;
     position: relative;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 10%;
+    text-align: center;
 }
